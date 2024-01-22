@@ -18,6 +18,14 @@ void printm4(const mat4 &m)
 
 Game::Game(GLFWwindow *window) : App(window) {}
 
+bool Game::move_forward = false;
+bool Game::move_backward = false;
+bool Game::move_left = false;
+bool Game::move_right = false;
+
+bool Game::physicsPaused = false;
+bool Game::step = false;
+
 void Game::init(int paramSample)
 {
     ambientLight = vec3(0.1);
@@ -55,6 +63,13 @@ void Game::init(int paramSample)
             "",
             globals.standartShaderUniform3D()));
 
+    basic = MeshMaterial(
+        new ShaderProgram(
+            "shader/foward/basic.frag",
+            "shader/foward/basic.vert",
+            "",
+            globals.standartShaderUniform3D()));
+
     PBRstencil = MeshMaterial(
         new ShaderProgram(
             "shader/foward/PBR.frag",
@@ -81,8 +96,6 @@ bool Game::userInput(GLFWKeyInfo input)
 {
     if (baseInput(input))
         return true;
-
-    playerControler->doInputs(input);
 
     if (input.action == GLFW_PRESS)
     {
@@ -114,7 +127,57 @@ bool Game::userInput(GLFWKeyInfo input)
             SSAO.getShader().reset();
             depthOnlyMaterial->reset();
             PBR->reset();
+            basic->reset();
             skyboxMaterial->reset();
+            break;
+
+        case GLFW_KEY_W:
+            move_forward = true;
+            break;
+
+        case GLFW_KEY_S:
+            move_backward = true;
+            break;
+
+        case GLFW_KEY_A:
+            move_left = true;
+            break;
+
+        case GLFW_KEY_D:
+            move_right = true;
+            break;
+
+        case GLFW_KEY_KP_DECIMAL:
+            step = true;
+            break;
+
+        case GLFW_KEY_SPACE:
+            physicsPaused = !physicsPaused;
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    if (input.action == GLFW_RELEASE)
+    {
+        switch (input.key)
+        {
+        case GLFW_KEY_W:
+            move_forward = false;
+            break;
+
+        case GLFW_KEY_S:
+            move_backward = false;
+            break;
+
+        case GLFW_KEY_A:
+            move_left = false;
+            break;
+
+        case GLFW_KEY_D:
+            move_right = false;
             break;
 
         default:
@@ -136,55 +199,14 @@ void Game::mainloop()
     skybox->state.scaleScalar(1E6);
     scene.add(skybox);
 
-    ModelRef floor = newModel(PBR);
-    floor->loadFromFolder("ressources/models/ground/");
+    ModelRef floor = newModel(basic);
+    floor->loadFromFolder("ressources/models/cube/", false, false);
+    floor->state.setScale(vec3(2, 2, 2));
+    scene.add(floor);
 
-    ModelRef cube = newModel(PBR);
-    cube->loadFromFolder("ressources/models/cube/");
-    cube->state.scaleScalar(0.1);
-    cube->state.setPosition(vec3(5, 10, 0));
-
-    int gridSize = 6;
-    int gridScale = 10;
-    for (int i = -gridSize; i < gridSize; i++)
-        for (int j = -gridSize; j < gridSize; j++)
-        {
-            ModelRef f = floor->copyWithSharedMesh();
-            f->state
-                .scaleScalar(gridScale)
-                .setPosition(vec3(i * gridScale * 1.80, 0, j * gridScale * 1.80));
-            scene.add(f);
-        }
-
-    ModelRef leaves = newModel(PBRstencil);
-    leaves->loadFromFolder("ressources/models/fantasy tree/");
-    leaves->noBackFaceCulling = true;
-
-    ModelRef trunk = newModel(PBR);
-    trunk->loadFromFolder("ressources/models/fantasy tree/trunk/");
-
-    // ObjectGroupRef tree = newObjectGroup();
-    // tree->add(leaves);
-    // tree->add(trunk);
-    // tree->state.scaleScalar(0.5);
-    // scene.add(tree);
-
-    int forestSize = 0;
-    float treeScale = 0.5;
-    for (int i = -forestSize; i < forestSize; i++)
-        for (int j = -forestSize; j < forestSize; j++)
-        {
-            ObjectGroupRef tree = newObjectGroup();
-            tree->add(trunk->copyWithSharedMesh());
-            ModelRef l = leaves->copyWithSharedMesh();
-            l->noBackFaceCulling = true;
-            tree->add(l);
-            tree->state
-                .scaleScalar(treeScale)
-                .setPosition(vec3(i * treeScale * 40, 0, j * treeScale * 40));
-
-            scene.add(tree);
-        }
+    ModelRef cube = newModel(basic);
+    cube->loadFromFolder("ressources/models/cube/", false, false);
+    scene.add(cube);
 
     SceneDirectionalLight sun = newDirectionLight(
         DirectionLight()
@@ -197,26 +219,27 @@ void Game::mainloop()
     scene.add(sun);
 
     /* FPS demo initialization */
-    RigidBody::gravity = vec3(0.0, -80, 0.0);
+    RigidBody::gravity = vec3(0.0, -9.81, 0.0);
 
-    AABBCollider aabbCollider = AABBCollider(vec3(-32 * 5, -.1, -32 * 5), vec3(32 * 5, .1, 32 * 5));
+    AABBCollider aabbCollider1 = AABBCollider(vec3(-2, -2, -2), vec3(2, 2, 2));
+    AABBCollider aabbCollider2 = AABBCollider(vec3(-1, -1, -1), vec3(1, 1, 1));
 
     RigidBodyRef FloorBody = newRigidBody(
         vec3(0.0, 0.0, 0.0),
         vec3(0.0, 0.0, 0.0),
         quat(0.0, 0.0, 0.0, 1.0),
         vec3(0.0, 0.0, 0.0),
-        &aabbCollider,
+        &aabbCollider1,
         PhysicsMaterial(),
         0.0,
         false);
 
     RigidBodyRef CubeBody = newRigidBody(
-        vec3(0.0, 0.0, 0.0),
+        vec3(0.0, 5.0, 0.0),
         vec3(0.0, 0.0, 0.0),
         quat(0.0, 0.0, 0.0, 1.0),
         vec3(0.0, 0.0, 0.0),
-        &aabbCollider,
+        &aabbCollider2,
         PhysicsMaterial(),
         1.0,
         true);
@@ -227,25 +250,16 @@ void Game::mainloop()
     GameObject FloorGameObject(newObjectGroup(), FloorBody);
     FloorGameObject.getGroup()->add(floor);
 
+    FloorGameObject.getGroup()->state.setPosition(vec3(-1, -1, -1));
+
     GameObject CubeGameObject(newObjectGroup(), CubeBody);
     CubeGameObject.getGroup()->add(cube);
 
-    SphereCollider playerCollider = SphereCollider(2.0);
-    RigidBodyRef playerBody = newRigidBody(
-        vec3(0.0, 8.0, 0.0),
-        vec3(0.0, 0.0, 0.0),
-        quat(0.0, 0.0, 0.0, 1.0),
-        vec3(0.0, 0.0, 0.0),
-        &playerCollider,
-        PhysicsMaterial(0.0f, 0.0f, 0.0f, 0.0f),
-        1.0,
-        false);
+    globals.currentCamera->setPosition(vec3(-15, 0, 0));
+    globals.currentCamera->lookAt(vec3(0, 0, 0));
 
-    physicsEngine.addObject(playerBody);
-
-    playerControler =
-        std::make_shared<FPSController>(window, playerBody, &camera, &inputs);
-    FPSVariables::thingsYouCanStandOn.push_back(FloorBody);
+    // set clear color to a nice blue
+    glClearColor(0.0, 0.2, 0.4, 1.0);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
@@ -295,12 +309,56 @@ void Game::mainloop()
         for (GLFWKeyInfo input; inputs.pull(input); userInput(input))
             ;
 
+        if (move_forward)
+        {
+            // move camera forward
+            vec3 forwarddir = globals.currentCamera->getDirection();
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + forwarddir * 0.1f);
+        }
+
+        if (move_backward)
+        {
+            // move camera backward
+            vec3 backward = -globals.currentCamera->getDirection();
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + backward * 0.1f);
+        }
+
+        if (move_left)
+        {
+            // move camera left
+            vec3 forwarddir = globals.currentCamera->getDirection();
+            vec3 left = cross(vec3(0, 1, 0), forwarddir);
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + left * 0.1f);
+        }
+
+        if (move_right)
+        {
+            // move camera right
+            vec3 forwarddir = globals.currentCamera->getDirection();
+            vec3 right = cross(forwarddir, vec3(0, 1, 0));
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + right * 0.1f);
+        }
+
         float delta = min(globals.simulationTime.getDelta(), 0.05f);
-        if (globals.windowHasFocus() && delta > 0.00001f)
+        if (globals.windowHasFocus() && delta > 0.00001f && !physicsPaused)
         {
             physicsEngine.update(delta);
-            playerControler->update(delta);
             FloorGameObject.update(delta);
+            CubeGameObject.update(delta);
+
+            // std::cout << CubeGameObject.getBody()->getPosition().y << "\n";
+        }
+
+        if (physicsPaused && step)
+        {
+            physicsEngine.update(delta);
+            FloorGameObject.update(delta);
+            CubeGameObject.update(delta);
+            step = false;
         }
 
         menu.trackCursor();
