@@ -8,6 +8,7 @@ private:
     MeshMaterial depthOnlyMaterial;
     MeshMaterial PBR;
     MeshMaterial basic;
+    // MeshMaterial basic2;
     MeshMaterial skyboxMaterial;
     MeshMaterial depthOnlyStencilMaterial;
     MeshMaterial PBRstencil;

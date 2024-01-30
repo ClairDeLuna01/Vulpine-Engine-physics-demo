@@ -70,6 +70,15 @@ void Game::init(int paramSample)
             "",
             globals.standartShaderUniform3D()));
 
+    // basic2 = MeshMaterial(
+    //     new ShaderProgram(
+    //         "shader/foward/basic.frag",
+    //         "shader/foward/basic.vert",
+    //         "",
+    //         globals.standartShaderUniform3D()));
+
+    // basic2->addUniform(ShaderUniform(vec3(0, 1.0, 0), 20));
+
     PBRstencil = MeshMaterial(
         new ShaderProgram(
             "shader/foward/PBR.frag",
@@ -128,6 +137,7 @@ bool Game::userInput(GLFWKeyInfo input)
             depthOnlyMaterial->reset();
             PBR->reset();
             basic->reset();
+            // basic2->reset();
             skyboxMaterial->reset();
             break;
 
@@ -201,11 +211,15 @@ void Game::mainloop()
 
     ModelRef floor = newModel(basic);
     floor->loadFromFolder("ressources/models/cube/", false, false);
-    floor->state.setScale(vec3(2, 2, 2));
+    // floor->state.setScale(vec3(2, 2, 2));
+    vec3 c1 = vec3(1.0, 0, 0);
+    floor->uniforms.add(ShaderUniform(&c1, 20));
     scene.add(floor);
 
     ModelRef cube = newModel(basic);
     cube->loadFromFolder("ressources/models/cube/", false, false);
+    vec3 c2 = vec3(0, 1.0, 0);
+    cube->uniforms.add(ShaderUniform(&c2, 20));
     scene.add(cube);
 
     SceneDirectionalLight sun = newDirectionLight(
@@ -221,15 +235,19 @@ void Game::mainloop()
     /* FPS demo initialization */
     RigidBody::gravity = vec3(0.0, -9.81, 0.0);
 
-    AABBCollider aabbCollider1 = AABBCollider(vec3(-2, -2, -2), vec3(2, 2, 2));
+    // AABBCollider aabbCollider1 = AABBCollider(vec3(-2, -2, -2), vec3(2, 2, 2));
+    AABBCollider aabbCollider1 = AABBCollider(vec3(-1, -1, -1), vec3(1, 1, 1));
     AABBCollider aabbCollider2 = AABBCollider(vec3(-1, -1, -1), vec3(1, 1, 1));
 
+    SphereCollider sphereCollider1 = SphereCollider(1.0);
+    SphereCollider sphereCollider2 = SphereCollider(1.0);
+
     RigidBodyRef FloorBody = newRigidBody(
-        vec3(0.0, 0.0, 0.0),
+        vec3(0.0, -2.0, 0.0),
         vec3(0.0, 0.0, 0.0),
         quat(0.0, 0.0, 0.0, 1.0),
         vec3(0.0, 0.0, 0.0),
-        &aabbCollider1,
+        &sphereCollider1,
         PhysicsMaterial(),
         0.0,
         false);
@@ -239,7 +257,7 @@ void Game::mainloop()
         vec3(0.0, 0.0, 0.0),
         quat(0.0, 0.0, 0.0, 1.0),
         vec3(0.0, 0.0, 0.0),
-        &aabbCollider2,
+        &sphereCollider2,
         PhysicsMaterial(),
         1.0,
         true);
@@ -250,16 +268,11 @@ void Game::mainloop()
     GameObject FloorGameObject(newObjectGroup(), FloorBody);
     FloorGameObject.getGroup()->add(floor);
 
-    FloorGameObject.getGroup()->state.setPosition(vec3(-1, -1, -1));
-
     GameObject CubeGameObject(newObjectGroup(), CubeBody);
     CubeGameObject.getGroup()->add(cube);
 
     globals.currentCamera->setPosition(vec3(-15, 0, 0));
     globals.currentCamera->lookAt(vec3(0, 0, 0));
-
-    // set clear color to a nice blue
-    glClearColor(0.0, 0.2, 0.4, 1.0);
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
