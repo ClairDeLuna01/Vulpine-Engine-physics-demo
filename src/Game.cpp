@@ -28,6 +28,8 @@ bool Game::step = false;
 
 void Game::init(int paramSample)
 {
+    App::init();
+
     ambientLight = vec3(0.1);
 
     finalProcessingStage = ShaderProgram(
