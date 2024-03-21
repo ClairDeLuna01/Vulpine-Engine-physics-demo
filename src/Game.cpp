@@ -360,8 +360,8 @@ void Game::mainloop()
         if (globals.windowHasFocus() && delta > 0.00001f && !physicsPaused)
         {
             physicsEngine.update(delta);
-            FloorGameObject.update(delta);
-            CubeGameObject.update(delta);
+            FloorGameObject.update();
+            CubeGameObject.update();
 
             // std::cout << CubeGameObject.getBody()->getPosition().y << "\n";
         }
@@ -369,8 +369,8 @@ void Game::mainloop()
         if (physicsPaused && step)
         {
             physicsEngine.update(delta);
-            FloorGameObject.update(delta);
-            CubeGameObject.update(delta);
+            FloorGameObject.update();
+            CubeGameObject.update();
             step = false;
         }
 
