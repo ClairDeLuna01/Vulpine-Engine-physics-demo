@@ -1,6 +1,6 @@
 #pragma once
 #include <../Engine/include/App.hpp>
-#include <../Engine/include/PhysicsEngine.hpp>
+#include <../Engine/include/Physics.hpp>
 
 class Game final : public App
 {
@@ -19,6 +19,8 @@ private:
     static bool move_backward;
     static bool move_left;
     static bool move_right;
+    static bool move_down;
+    static bool move_up;
 
     static bool physicsPaused;
     static bool step;

@@ -5,6 +5,8 @@
 #include <MathsUtils.hpp>
 #include <Fonts.hpp>
 #include <FastUI.hpp>
+#include <Helpers.hpp>
+#include <random>
 
 void printm4(const mat4 &m)
 {
@@ -22,6 +24,8 @@ bool Game::move_forward = false;
 bool Game::move_backward = false;
 bool Game::move_left = false;
 bool Game::move_right = false;
+bool Game::move_down = false;
+bool Game::move_up = false;
 
 bool Game::physicsPaused = false;
 bool Game::step = false;
@@ -159,6 +163,14 @@ bool Game::userInput(GLFWKeyInfo input)
             move_right = true;
             break;
 
+        case GLFW_KEY_Q:
+            move_down = true;
+            break;
+
+        case GLFW_KEY_E:
+            move_up = true;
+            break;
+
         case GLFW_KEY_KP_DECIMAL:
             step = true;
             break;
@@ -192,6 +204,14 @@ bool Game::userInput(GLFWKeyInfo input)
             move_right = false;
             break;
 
+        case GLFW_KEY_Q:
+            move_down = false;
+            break;
+
+        case GLFW_KEY_E:
+            move_up = false;
+            break;
+
         default:
             break;
         }
@@ -211,18 +231,22 @@ void Game::mainloop()
     skybox->state.scaleScalar(1E6);
     scene.add(skybox);
 
-    ModelRef floor = newModel(basic);
-    floor->loadFromFolder("ressources/models/cube/", false, false);
-    // floor->state.setScale(vec3(2, 2, 2));
-    vec3 c1 = vec3(1.0, 0, 0);
-    floor->uniforms.add(ShaderUniform(&c1, 20));
-    scene.add(floor);
-
     ModelRef cube = newModel(basic);
+    cube->state.scale = vec3(10.0f, 0.5f, 6.0f);
     cube->loadFromFolder("ressources/models/cube/", false, false);
     vec3 c2 = vec3(0, 1.0, 0);
     cube->uniforms.add(ShaderUniform(&c2, 20));
     scene.add(cube);
+
+    const std::vector<vec3> vertices{
+        {-1.22269,-1.24611,-1},
+        {1.71624,0.7437,-1},
+        {1.26405,1.95985,0.06473},
+        {0.32781,-0.71218,1.84951},
+        {-1.48494,0.84139,1}
+    };
+    PolyhedronHelperRef convex(new PolyhedronHelper(vertices));
+    //scene.add(convex);
 
     SceneDirectionalLight sun = newDirectionLight(
         DirectionLight()
@@ -234,44 +258,80 @@ void Game::mainloop()
     sun->activateShadows();
     scene.add(sun);
 
-    /* FPS demo initialization */
-    RigidBody::gravity = vec3(0.0, -9.81, 0.0);
+    //AABBCollider aabbCollider = AABBCollider(vec3(1.0f, 1.0f, 1.0f));
+    AABBCollider aabbCollider = AABBCollider(vec3(10.0f, 0.5f, 6.0f));
+    //OBBCollider obbCollider2 = OBBCollider(vec3(1.0f, 1.0f, 1.0f));
+    SphereCollider sphereCollider = SphereCollider(1.0f);
+    //SphereCollider sphereCollider2 = SphereCollider(1.0f);
+    AABBCollider triggerBoxCollider = AABBCollider(vec3(20000000.0f, 10.0f, 20000000.0f));
+    //ConvexCollider convexCollider = ConvexCollider(vertices);
 
-    // AABBCollider aabbCollider1 = AABBCollider(vec3(-2, -2, -2), vec3(2, 2, 2));
-    AABBCollider aabbCollider1 = AABBCollider(vec3(-1, -1, -1), vec3(1, 1, 1));
-    AABBCollider aabbCollider2 = AABBCollider(vec3(-1, -1, -1), vec3(1, 1, 1));
+    const int layer0 = 0;
 
-    SphereCollider sphereCollider1 = SphereCollider(1.0);
-    SphereCollider sphereCollider2 = SphereCollider(1.0);
+    ForceField::Ref gravity = ForceField::global(ForceField::uniformForceField({0.0f, -G, 0.0f}));
+    physicsEngine.addForceField(gravity);
 
-    RigidBodyRef FloorBody = newRigidBody(
-        vec3(0.0, -2.0, 0.0),
-        vec3(0.0, 0.0, 0.0),
-        quat(0.0, 0.0, 0.0, 1.0),
-        vec3(0.0, 0.0, 0.0),
-        &sphereCollider1,
-        PhysicsMaterial(),
-        0.0,
-        false);
+    /*ForceField::Ref pull = ForceField::make(
+        &sphereCollider,
+        vec3(-5.0f, -5.0f, 10.0f),
+        identity<quat>(),
+        ForceField::pointForceField({-5.0f, -5.0f, 10.0f}, 200.0f, 10.0f)
+    );
+    physicsEngine.addForceField(pull);*/
 
-    RigidBodyRef CubeBody = newRigidBody(
-        vec3(0.0, 5.0, 0.0),
-        vec3(0.0, 0.0, 0.0),
-        quat(0.0, 0.0, 0.0, 1.0),
-        vec3(0.0, 0.0, 0.0),
-        &sphereCollider2,
-        PhysicsMaterial(),
-        1.0,
-        true);
+    Trigger::Ref trigger = Trigger::make(
+        &triggerBoxCollider,
+        vec3(0.0f, -28.0f, 0.0f)
+    );
+    trigger->registerOnEnterEvent([](RigidBody::Ref& rigidBody, float delta) {
+        rigidBody->setPosition(vec3(-0.1f * rigidBody->getPosition().x, 45.0f, -0.1f * rigidBody->getPosition().z));
+        rigidBody->setVelocity(rigidBody->getVelocity() * 0.1f);
+    });
+    physicsEngine.addTrigger(trigger);
 
-    physicsEngine.addObject(FloorBody);
-    physicsEngine.addObject(CubeBody);
+    constexpr int nSpheres = 800;
 
-    GameObject FloorGameObject(newObjectGroup(), FloorBody);
-    FloorGameObject.getGroup()->add(floor);
+    RigidBody::Ref CubeBody = RigidBody::make(
+        &aabbCollider,
+        -1.0f,
+        PhysicsMaterial(0.0f, 0.85f, 0.0f, 0.0f),
+        layer0,
+        vec3(0.0f, 0.0f, 0.0f),
+        vec3(0.0f, 0.0f, 0.0f),
+        vec3(0.0f, 0.0f, 0.0f)
+    );
+
+    physicsEngine.addRigidBody(CubeBody);
 
     GameObject CubeGameObject(newObjectGroup(), CubeBody);
     CubeGameObject.getGroup()->add(cube);
+
+    std::vector<GameObject> sphereGameObjects;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<double> dis(0.0, 1.0);
+    std::uniform_real_distribution<double> dis2(-50.0, 50.0);
+
+    for (int i = 0; i < nSpheres; ++i) {
+        RigidBody::Ref sphereBody = RigidBody::make(
+            &sphereCollider,
+            1.0f,
+            PhysicsMaterial(0.0f, dis(gen) / 2.0f, 0.0f, 0.0f),
+            layer0,
+            vec3(1.0f + 0.02f * i, 8.0f + 2.0f, -nSpheres * 0.5f + i),
+            vec3(dis2(gen), dis(gen), dis2(gen)),
+            vec3(0.0f, 0.0f, 0.0f)
+        );
+        physicsEngine.addRigidBody(sphereBody);
+
+        SphereHelperRef sphere(new SphereHelper({dis(gen), dis(gen), dis(gen)}, 1.0f));
+        scene.add(sphere);
+
+        GameObject sphereGameObject(newObjectGroup(), sphereBody);
+        sphereGameObject.getGroup()->add(sphere);
+        sphereGameObjects.push_back(sphereGameObject);
+    }    
 
     globals.currentCamera->setPosition(vec3(-15, 0, 0));
     globals.currentCamera->lookAt(vec3(0, 0, 0));
@@ -306,11 +366,15 @@ void Game::mainloop()
     FastUI_context ui(uiBatch, font, scene2D, defaultFontMaterial);
     FastUI_valueMenu menu(ui, {});
 
+    BenchTimer physicsTimer("Physics Timer");
+
     menu->state.setPosition(vec3(-0.9, 0.5, 0)).scaleScalar(0.95);
-    globals.appTime.setMenuConst(menu);
-    globals.cpuTime.setMenu(menu);
-    globals.gpuTime.setMenu(menu);
-    globals.fpsLimiter.setMenu(menu);
+    physicsTimer.setMenu(menu);
+    // globals.appTime.setMenuConst(menu);
+    // globals.cpuTime.setMenu(menu);
+    // globals.gpuTime.setMenu(menu);
+    // globals.fpsLimiter.setMenu(menu);
+    
 
     menu.batch();
     scene2D.updateAllObjects();
@@ -358,21 +422,48 @@ void Game::mainloop()
             globals.currentCamera->setPosition(globals.currentCamera->getPosition() + right * 0.1f);
         }
 
+        if (move_down)
+        {
+            // move camera down
+            vec3 forwarddir = globals.currentCamera->getDirection();
+            vec3 down = cross(forwarddir, vec3(0, 0, 1));
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + down * 0.1f);
+        }
+
+        if (move_up)
+        {
+            // move camera up
+            vec3 forwarddir = globals.currentCamera->getDirection();
+            vec3 up = cross(vec3(0, 0, 1), forwarddir);
+
+            globals.currentCamera->setPosition(globals.currentCamera->getPosition() + up * 0.1f);
+        }
+
         float delta = min(globals.simulationTime.getDelta(), 0.05f);
         if (globals.windowHasFocus() && delta > 0.00001f && !physicsPaused)
         {
-            physicsEngine.update(delta);
-            FloorGameObject.update();
+            physicsTimer.start();
+
+            physicsEngine.tick(delta);
             CubeGameObject.update();
+            for (GameObject& sphereGameObject : sphereGameObjects) {
+                sphereGameObject.update();
+            }
 
             // std::cout << CubeGameObject.getBody()->getPosition().y << "\n";
+
+            physicsTimer.end();
         }
 
         if (physicsPaused && step)
         {
-            physicsEngine.update(delta);
-            FloorGameObject.update();
+            physicsEngine.tick(delta);
+            //FloorGameObject.update();
             CubeGameObject.update();
+            for (GameObject& sphereGameObject : sphereGameObjects) {
+                sphereGameObject.update();
+            }
             step = false;
         }
 

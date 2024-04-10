@@ -6,7 +6,7 @@ else
 endif
 
 MAKE_FLAGS = --no-print-directory
-MAKE_PARALLEL = -j 16 -k
+MAKE_PARALLEL = -j -k
 
 default : install
 
