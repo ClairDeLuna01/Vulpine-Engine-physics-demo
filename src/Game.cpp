@@ -259,16 +259,16 @@ void Game::mainloop()
     scene.add(sun);
 
     //AABBCollider aabbCollider = AABBCollider(vec3(1.0f, 1.0f, 1.0f));
-    AABBCollider aabbCollider = AABBCollider(vec3(10.0f, 0.5f, 6.0f));
+    OBBCollider aabbCollider = OBBCollider(vec3(10.0f, 0.5f, 6.0f));
     //OBBCollider obbCollider2 = OBBCollider(vec3(1.0f, 1.0f, 1.0f));
     SphereCollider sphereCollider = SphereCollider(1.0f);
     //SphereCollider sphereCollider2 = SphereCollider(1.0f);
-    AABBCollider triggerBoxCollider = AABBCollider(vec3(20000000.0f, 10.0f, 20000000.0f));
+    OBBCollider triggerBoxCollider = OBBCollider(vec3(20000000.0f, 10.0f, 20000000.0f));
     //ConvexCollider convexCollider = ConvexCollider(vertices);
 
     const int layer0 = 0;
 
-    ForceField::Ref gravity = ForceField::global(ForceField::uniformForceField({0.0f, -G, 0.0f}));
+    ForceField::Ref gravity = ForceField::global(ForceField::uniformForceField({0.0f, -9.81f, 0.0f}));
     physicsEngine.addForceField(gravity);
 
     /*ForceField::Ref pull = ForceField::make(
@@ -289,16 +289,17 @@ void Game::mainloop()
     });
     physicsEngine.addTrigger(trigger);
 
-    constexpr int nSpheres = 800;
+    constexpr int nSpheres = 2500;
 
     RigidBody::Ref CubeBody = RigidBody::make(
         &aabbCollider,
-        -1.0f,
+        0.0f,
         PhysicsMaterial(0.0f, 0.85f, 0.0f, 0.0f),
         layer0,
+        true,
         vec3(0.0f, 0.0f, 0.0f),
         vec3(0.0f, 0.0f, 0.0f),
-        vec3(0.0f, 0.0f, 0.0f)
+        true
     );
 
     physicsEngine.addRigidBody(CubeBody);
@@ -319,9 +320,10 @@ void Game::mainloop()
             1.0f,
             PhysicsMaterial(0.0f, dis(gen) / 2.0f, 0.0f, 0.0f),
             layer0,
+            false,
             vec3(1.0f + 0.02f * i, 8.0f + 2.0f, -nSpheres * 0.5f + i),
             vec3(dis2(gen), dis(gen), dis2(gen)),
-            vec3(0.0f, 0.0f, 0.0f)
+            true
         );
         physicsEngine.addRigidBody(sphereBody);
 
