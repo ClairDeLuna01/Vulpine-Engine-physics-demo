@@ -232,18 +232,18 @@ void Game::mainloop()
     scene.add(skybox);
 
     ModelRef cube = newModel(basic);
-    cube->state.scale = vec3(10.0f, 0.5f, 6.0f);
+    cube->state.scale = vec3(16.0f, 0.5f, 10.0f);
     cube->loadFromFolder("ressources/models/cube/", false, false);
     vec3 c2 = vec3(0, 1.0, 0);
     cube->uniforms.add(ShaderUniform(&c2, 20));
     scene.add(cube);
 
     const std::vector<vec3> vertices{
-        {-1.22269,-1.24611,-1},
-        {1.71624,0.7437,-1},
-        {1.26405,1.95985,0.06473},
-        {0.32781,-0.71218,1.84951},
-        {-1.48494,0.84139,1}
+        vec3{-1.22269,-1.24611,-1},
+        vec3{1.71624,0.7437,-1},
+        vec3{1.26405,1.95985,0.06473},
+        vec3{0.32781,-0.71218,1.84951},
+        vec3{-1.48494,0.84139,1}
     };
     PolyhedronHelperRef convex(new PolyhedronHelper(vertices));
     //scene.add(convex);
@@ -259,7 +259,7 @@ void Game::mainloop()
     scene.add(sun);
 
     //AABBCollider aabbCollider = AABBCollider(vec3(1.0f, 1.0f, 1.0f));
-    OBBCollider aabbCollider = OBBCollider(vec3(10.0f, 0.5f, 6.0f));
+    OBBCollider aabbCollider = OBBCollider(vec3(16.0f, 0.5f, 10.0f));
     //OBBCollider obbCollider2 = OBBCollider(vec3(1.0f, 1.0f, 1.0f));
     SphereCollider sphereCollider = SphereCollider(1.0f);
     //SphereCollider sphereCollider2 = SphereCollider(1.0f);
@@ -289,17 +289,35 @@ void Game::mainloop()
     });
     physicsEngine.addTrigger(trigger);
 
-    constexpr int nSpheres = 2500;
+    constexpr int nSpheres = 1500;
+
+    /*RigidBody::Ref ConvexBody = RigidBody::make(
+        &convexCollider,
+        0.0f,
+        PhysicsMaterial(0.0f, 0.0f, 0.0f, 0.0f),
+        layer0,
+        true,
+        vec3(0.0f, 2.0f, 0.0f),
+        vec3(0.0f, 0.0f, 0.0f),
+        true,
+        angleAxis(0.4f, normalize(vec3(1.0f, 0.5f, 0.2f)))
+    );
+
+    physicsEngine.addRigidBody(ConvexBody);
+
+    GameObject ConvexGameObject(newObjectGroup(), ConvexBody);
+    ConvexGameObject.getGroup()->add(convex);*/
 
     RigidBody::Ref CubeBody = RigidBody::make(
         &aabbCollider,
         0.0f,
-        PhysicsMaterial(0.0f, 0.85f, 0.0f, 0.0f),
+        PhysicsMaterial(0.2f, 0.85f, 0.0f, 0.0f),
         layer0,
         true,
         vec3(0.0f, 0.0f, 0.0f),
         vec3(0.0f, 0.0f, 0.0f),
-        true
+        true,
+        angleAxis(0.4f, normalize(vec3(1.0f, 0.5f, 0.2f)))
     );
 
     physicsEngine.addRigidBody(CubeBody);
@@ -318,7 +336,7 @@ void Game::mainloop()
         RigidBody::Ref sphereBody = RigidBody::make(
             &sphereCollider,
             1.0f,
-            PhysicsMaterial(0.0f, dis(gen) / 2.0f, 0.0f, 0.0f),
+            PhysicsMaterial(0.4f, dis(gen) / 2.0f, 0.0f, 0.0f),
             layer0,
             false,
             vec3(1.0f + 0.02f * i, 8.0f + 2.0f, -nSpheres * 0.5f + i),
@@ -449,6 +467,7 @@ void Game::mainloop()
 
             physicsEngine.tick(delta);
             CubeGameObject.update();
+            //ConvexGameObject.update();
             for (GameObject& sphereGameObject : sphereGameObjects) {
                 sphereGameObject.update();
             }
@@ -463,6 +482,7 @@ void Game::mainloop()
             physicsEngine.tick(delta);
             //FloorGameObject.update();
             CubeGameObject.update();
+            //ConvexGameObject.update();
             for (GameObject& sphereGameObject : sphereGameObjects) {
                 sphereGameObject.update();
             }
